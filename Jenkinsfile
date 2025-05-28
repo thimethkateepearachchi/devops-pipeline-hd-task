@@ -20,7 +20,7 @@ pipeline {
 
     stage('Test') {
       steps {
-        sh './node_modules/.bin/jest'
+        sh './node_modules/.bin/jest --detectOpenHandles'
       }
     }
   }
