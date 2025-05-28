@@ -12,9 +12,15 @@ pipeline {
       }
     }
 
+    stage('Fix Jest Permission') {
+      steps {
+        sh 'chmod +x ./node_modules/.bin/jest'
+      }
+    }
+
     stage('Test') {
       steps {
-        sh 'npx jest'
+        sh './node_modules/.bin/jest'
       }
     }
   }
