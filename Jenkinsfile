@@ -47,9 +47,13 @@ pipeline {
 
     stage('Security Scan (Snyk)') {
       steps {
-        sh 'npx snyk test || true' // Continue even if vulnerabilities found
+        withCredentials([string(credentialsId: 'SNYK_TOKEN', variable: 'SNYK_TOKEN')]) {
+            sh 'npx snyk auth $SNYK_TOKEN'
+            sh 'npx snyk test'
+        }
       }
     }
+
 
     stage('Docker Build & Deploy') {
       steps {
