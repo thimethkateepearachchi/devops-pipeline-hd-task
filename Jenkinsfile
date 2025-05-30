@@ -6,10 +6,17 @@ pipeline {
   }
 
   environment {
-    SONAR_TOKEN = credentials('sonar-token-id')
+    SONAR_TOKEN = credentials('sonar-token-id') // Ensure this matches your Jenkins credential ID
   }
 
   stages {
+
+    stage('Checkout Code') {
+      steps {
+        checkout scm
+      }
+    }
+
     stage('Install Dependencies') {
       steps {
         sh 'npm install'
@@ -24,8 +31,7 @@ pipeline {
 
     stage('Run Tests') {
       steps {
-        sh 'chmod +x ./node_modules/.bin/jest'
-        sh './node_modules/.bin/jest --detectOpenHandles'
+        sh 'npx jest --detectOpenHandles'
       }
     }
 
@@ -48,15 +54,25 @@ pipeline {
     stage('Security Scan (Snyk)') {
       steps {
         withCredentials([string(credentialsId: 'SNYK_TOKEN', variable: 'SNYK_TOKEN')]) {
-          sh 'npx snyk auth $SNYK_TOKEN'
-          sh 'npx snyk test'
+          sh '''
+            npx snyk auth $SNYK_TOKEN
+            npx snyk test
+          '''
         }
       }
     }
 
+  }
+
   post {
     always {
-      echo 'Jenkins Pipeline completed.'
+      echo '✅ Jenkins Pipeline completed.'
+    }
+    failure {
+      echo '❌ Pipeline failed.'
+    }
+    success {
+      echo '🎉 Pipeline succeeded!'
     }
   }
 }
