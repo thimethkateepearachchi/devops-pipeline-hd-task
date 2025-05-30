@@ -6,17 +6,10 @@ pipeline {
   }
 
   environment {
-    SONAR_TOKEN = credentials('sonar-token-id') // Ensure this matches your Jenkins credential ID
+    SONAR_TOKEN = credentials('sonar-token-id')
   }
 
   stages {
-
-    stage('Checkout Code') {
-      steps {
-        checkout scm
-      }
-    }
-
     stage('Install Dependencies') {
       steps {
         sh 'npm install'
@@ -31,7 +24,8 @@ pipeline {
 
     stage('Run Tests') {
       steps {
-        sh 'npx jest --detectOpenHandles'
+        sh 'chmod +x ./node_modules/.bin/jest'
+        sh './node_modules/.bin/jest --detectOpenHandles'
       }
     }
 
@@ -54,25 +48,35 @@ pipeline {
     stage('Security Scan (Snyk)') {
       steps {
         withCredentials([string(credentialsId: 'SNYK_TOKEN', variable: 'SNYK_TOKEN')]) {
-          sh '''
-            npx snyk auth $SNYK_TOKEN
-            npx snyk test
-          '''
+          sh 'npx snyk auth $SNYK_TOKEN'
+          sh 'npx snyk test'
         }
       }
     }
 
+    stage('Docker Build & Deploy') {
+      steps {
+        sh 'docker build -t react-ci-pipeline:latest .'
+        sh 'docker run -d -p 3000:3000 react-ci-pipeline:latest'
+      }
+    }
+
+    stage('Release Placeholder') {
+      steps {
+        echo 'Release step – connect with GitHub Releases or AWS CodeDeploy if needed.'
+      }
+    }
+
+    stage('Monitoring Placeholder') {
+      steps {
+        echo 'Monitoring step – integrate with Datadog, Prometheus, or New Relic.'
+      }
+    }
   }
 
   post {
     always {
-      echo '✅ Jenkins Pipeline completed.'
-    }
-    failure {
-      echo '❌ Pipeline failed.'
-    }
-    success {
-      echo '🎉 Pipeline succeeded!'
+      echo 'Jenkins Pipeline completed.'
     }
   }
 }
