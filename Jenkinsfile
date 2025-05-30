@@ -10,6 +10,12 @@ pipeline {
   }
 
   stages {
+    stage('Checkout Code') {
+      steps {
+        git url: 'https://github.com/thimethkateepearachchi/devops-pipeline-hd-task.git', branch: 'main'
+      }
+    }
+
     stage('Install Dependencies') {
       steps {
         sh 'npm install'
@@ -53,10 +59,14 @@ pipeline {
         }
       }
     }
+  }
 
   post {
     always {
-      echo 'Jenkins Pipeline completed.'
+      echo '✅ Jenkins Pipeline completed.'
+    }
+    failure {
+      echo '❌ Pipeline failed.'
     }
   }
 }
