@@ -10,10 +10,17 @@ pipeline {
     SNYK_TOKEN = credentials('SNYK_TOKEN')
   }
 
+  options {
+    // Keep build logs for 10 days and discard old builds to save space
+    buildDiscarder(logRotator(daysToKeepStr: '10', numToKeepStr: '5'))
+    // Timeout if build takes more than 30 minutes
+    timeout(time: 30, unit: 'MINUTES')
+  }
+
   stages {
-    stage('Checkout') {
+    stage('Checkout Source') {
       steps {
-        // Clone the repo so git commands work and workspace is set up
+        // Checkout the repo based on Jenkins job config or Multibranch pipeline
         checkout scm
       }
     }
@@ -32,8 +39,9 @@ pipeline {
 
     stage('Run Tests') {
       steps {
-        sh 'chmod +x ./node_modules/.bin/jest'
-        sh './node_modules/.bin/jest --detectOpenHandles'
+        // Make sure jest is executable (sometimes needed)
+        sh 'chmod +x ./node_modules/.bin/jest || true'
+        sh './node_modules/.bin/jest --detectOpenHandles --ci'
       }
     }
 
@@ -55,29 +63,23 @@ pipeline {
 
     stage('Security Scan (Snyk)') {
       steps {
-        sh """
+        sh '''
           npx snyk auth $SNYK_TOKEN
           npx snyk test
-        """
+        '''
       }
     }
 
     stage('Docker Build & Deploy') {
       steps {
-        // Use sudo if your Jenkins user does not have permission on docker socket
-        // Or configure docker group permissions properly instead of sudo
-        sh 'sudo docker build -t react-ci-pipeline:latest .'
-
-        // Stop any existing container on port 3000 (optional cleanup)
-        sh '''
-          if sudo docker ps -q --filter "ancestor=react-ci-pipeline:latest" | grep -q .; then
-            echo "Stopping existing react-ci-pipeline container..."
-            sudo docker ps -q --filter "ancestor=react-ci-pipeline:latest" | xargs sudo docker stop
-          fi
-        '''
-
-        // Run container detached, mapping port 3000, auto-remove on exit
-        sh 'sudo docker run -d --rm -p 3000:3000 react-ci-pipeline:latest'
+        script {
+          // Run Docker build and run, ensure Jenkins user has docker permissions
+          // You might need to prefix docker commands with 'sudo' if permission denied
+          sh 'docker build -t react-ci-pipeline:latest .'
+          sh 'docker stop react-ci-pipeline || true' // Stop existing container if any
+          sh 'docker rm react-ci-pipeline || true'   // Remove existing container if any
+          sh 'docker run -d --name react-ci-pipeline -p 3000:3000 react-ci-pipeline:latest'
+        }
       }
     }
 
@@ -97,7 +99,14 @@ pipeline {
   post {
     always {
       echo 'Jenkins Pipeline completed.'
-      cleanWs()
+      // Optionally clean workspace after build
+      // cleanWs()
+    }
+    success {
+      echo 'Build succeeded!'
+    }
+    failure {
+      echo 'Build failed. Check logs for errors.'
     }
   }
 }
