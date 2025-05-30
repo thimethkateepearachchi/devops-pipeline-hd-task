@@ -54,26 +54,6 @@ pipeline {
       }
     }
 
-    stage('Docker Build & Deploy') {
-      steps {
-        sh 'docker build -t react-ci-pipeline:latest .'
-        sh 'docker run -d -p 3000:3000 react-ci-pipeline:latest'
-      }
-    }
-
-    stage('Release Placeholder') {
-      steps {
-        echo 'Release step – connect with GitHub Releases or AWS CodeDeploy if needed.'
-      }
-    }
-
-    stage('Monitoring Placeholder') {
-      steps {
-        echo 'Monitoring step – integrate with Datadog, Prometheus, or New Relic.'
-      }
-    }
-  }
-
   post {
     always {
       echo 'Jenkins Pipeline completed.'
