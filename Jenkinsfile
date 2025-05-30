@@ -1,13 +1,8 @@
 pipeline {
-  agent {
-    docker {
-      image 'docker:24.0.7-cli' // Lightweight Docker CLI image
-      args '-v /var/run/docker.sock:/var/run/docker.sock'
-    }
-  }
+  agent any
 
   tools {
-    nodejs "node16" // Ensure this is configured under Jenkins -> Global Tool Configuration
+    nodejs "node16"
   }
 
   environment {
