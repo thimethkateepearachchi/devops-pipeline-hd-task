@@ -6,7 +6,7 @@ pipeline {
   }
 
   environment {
-    SONAR_TOKEN = credentials('SONAR_T')
+    SONAR_TOKEN = credentials('sonar-token-id')
   }
 
   stages {
