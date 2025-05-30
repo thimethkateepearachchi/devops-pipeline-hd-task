@@ -33,9 +33,11 @@ pipeline {
       steps {
         withSonarQubeEnv('SonarQubeServer') {
           sh '''
+            echo "📂 Listing workspace contents:"
+            ls -al
             npx sonar-scanner \
               -Dsonar.projectKey=react-ci-pipeline \
-              -Dsonar.sources=src \
+              -Dsonar.sources=. \
               -Dsonar.host.url=http://host.docker.internal:9000 \
               -Dsonar.login=$SONAR_TOKEN
           '''
