@@ -7,9 +7,28 @@ pipeline {
 
   environment {
     SONAR_TOKEN = credentials('sonar-token-id')
+    SNYK_TOKEN = credentials('SNYK_TOKEN')
+  }
+
+  options {
+    // Keep build logs for 10 days and discard old builds to save space
+    buildDiscarder(logRotator(daysToKeepStr: '10', numToKeepStr: '5'))
+    // Timeout if build takes more than 30 minutes
+    timeout(time: 30, unit: 'MINUTES')
+    // Timestamps for console output
+    timestamps()
+    // ANSI color for console output
+    ansiColor('xterm')
   }
 
   stages {
+    stage('Checkout Source') {
+      steps {
+        // Checkout the repo based on Jenkins job config or Multibranch pipeline
+        checkout scm
+      }
+    }
+
     stage('Install Dependencies') {
       steps {
         sh 'npm install'
@@ -24,8 +43,9 @@ pipeline {
 
     stage('Run Tests') {
       steps {
-        sh 'chmod +x ./node_modules/.bin/jest'
-        sh './node_modules/.bin/jest --detectOpenHandles'
+        // Make sure jest is executable (sometimes needed)
+        sh 'chmod +x ./node_modules/.bin/jest || true'
+        sh './node_modules/.bin/jest --detectOpenHandles --ci'
       }
     }
 
@@ -47,17 +67,23 @@ pipeline {
 
     stage('Security Scan (Snyk)') {
       steps {
-        withCredentials([string(credentialsId: 'SNYK_TOKEN', variable: 'SNYK_TOKEN')]) {
-          sh 'npx snyk auth $SNYK_TOKEN'
-          sh 'npx snyk test'
-        }
+        sh '''
+          npx snyk auth $SNYK_TOKEN
+          npx snyk test
+        '''
       }
     }
 
     stage('Docker Build & Deploy') {
       steps {
-        sh 'docker build -t react-ci-pipeline:latest .'
-        sh 'docker run -d -p 3000:3000 react-ci-pipeline:latest'
+        script {
+          // Stop and remove existing container gracefully
+          sh 'docker ps -q -f name=react-ci-pipeline | grep -q . && docker stop react-ci-pipeline || echo "No container to stop"'
+          sh 'docker ps -a -q -f name=react-ci-pipeline | grep -q . && docker rm react-ci-pipeline || echo "No container to remove"'
+          // Build new image and run container
+          sh 'docker build -t react-ci-pipeline:latest .'
+          sh 'docker run -d --name react-ci-pipeline -p 3000:3000 react-ci-pipeline:latest'
+        }
       }
     }
 
@@ -77,6 +103,14 @@ pipeline {
   post {
     always {
       echo 'Jenkins Pipeline completed.'
+      // Uncomment to clean workspace after build
+      // cleanWs()
+    }
+    success {
+      echo 'Build succeeded!'
+    }
+    failure {
+      echo 'Build failed. Check logs for errors.'
     }
   }
 }
