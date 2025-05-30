@@ -9,15 +9,16 @@ pipeline {
     SONAR_TOKEN = credentials('sonar-token-id')
   }
 
-  options {
-    // optionally skip automatic checkout and do it yourself
-    skipDefaultCheckout()
-  }
-
   stages {
     stage('Checkout Source') {
       steps {
-        checkout scm
+        // Explicit git checkout to avoid workspace issues
+        checkout([$class: 'GitSCM',
+          branches: [[name: '*/main']],  // Change to '*/master' if your repo default branch is master
+          userRemoteConfigs: [[
+            url: 'https://github.com/thimethkateepearachchi/devops-pipeline-hd-task.git'
+          ]]
+        ])
       }
     }
 
