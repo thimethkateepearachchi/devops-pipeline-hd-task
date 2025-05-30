@@ -1,12 +1,17 @@
 pipeline {
-  agent any
+  agent {
+    docker {
+      image 'docker:24.0.7-cli' // Lightweight Docker CLI image
+      args '-v /var/run/docker.sock:/var/run/docker.sock'
+    }
+  }
 
   tools {
-    nodejs "node16" // Make sure this tool is installed in Jenkins
+    nodejs "node16" // Ensure this is configured under Jenkins -> Global Tool Configuration
   }
 
   environment {
-    SONAR_TOKEN = credentials('sonar-token-id') // Store token in Jenkins credentials
+    SONAR_TOKEN = credentials('sonar-token-id')
   }
 
   stages {
@@ -48,12 +53,11 @@ pipeline {
     stage('Security Scan (Snyk)') {
       steps {
         withCredentials([string(credentialsId: 'SNYK_TOKEN', variable: 'SNYK_TOKEN')]) {
-            sh 'npx snyk auth $SNYK_TOKEN'
-            sh 'npx snyk test'
+          sh 'npx snyk auth $SNYK_TOKEN'
+          sh 'npx snyk test'
         }
       }
     }
-
 
     stage('Docker Build & Deploy') {
       steps {
