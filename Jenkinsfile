@@ -9,7 +9,18 @@ pipeline {
     SONAR_TOKEN = credentials('sonar-token-id')
   }
 
+  options {
+    // optionally skip automatic checkout and do it yourself
+    skipDefaultCheckout()
+  }
+
   stages {
+    stage('Checkout Source') {
+      steps {
+        checkout scm
+      }
+    }
+
     stage('Install Dependencies') {
       steps {
         sh 'npm install'
