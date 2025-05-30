@@ -7,9 +7,17 @@ pipeline {
 
   environment {
     SONAR_TOKEN = credentials('sonar-token-id')
+    SNYK_TOKEN = credentials('SNYK_TOKEN')
   }
 
   stages {
+    stage('Checkout') {
+      steps {
+        // Clone the repo so git commands work and workspace is set up
+        checkout scm
+      }
+    }
+
     stage('Install Dependencies') {
       steps {
         sh 'npm install'
@@ -47,17 +55,29 @@ pipeline {
 
     stage('Security Scan (Snyk)') {
       steps {
-        withCredentials([string(credentialsId: 'SNYK_TOKEN', variable: 'SNYK_TOKEN')]) {
-          sh 'npx snyk auth $SNYK_TOKEN'
-          sh 'npx snyk test'
-        }
+        sh """
+          npx snyk auth $SNYK_TOKEN
+          npx snyk test
+        """
       }
     }
 
     stage('Docker Build & Deploy') {
       steps {
-        sh 'docker build -t react-ci-pipeline:latest .'
-        sh 'docker run -d -p 3000:3000 react-ci-pipeline:latest'
+        // Use sudo if your Jenkins user does not have permission on docker socket
+        // Or configure docker group permissions properly instead of sudo
+        sh 'sudo docker build -t react-ci-pipeline:latest .'
+
+        // Stop any existing container on port 3000 (optional cleanup)
+        sh '''
+          if sudo docker ps -q --filter "ancestor=react-ci-pipeline:latest" | grep -q .; then
+            echo "Stopping existing react-ci-pipeline container..."
+            sudo docker ps -q --filter "ancestor=react-ci-pipeline:latest" | xargs sudo docker stop
+          fi
+        '''
+
+        // Run container detached, mapping port 3000, auto-remove on exit
+        sh 'sudo docker run -d --rm -p 3000:3000 react-ci-pipeline:latest'
       }
     }
 
@@ -77,6 +97,7 @@ pipeline {
   post {
     always {
       echo 'Jenkins Pipeline completed.'
+      cleanWs()
     }
   }
 }
